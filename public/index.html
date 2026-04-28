@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mp3Tune - YouTube to MP3 Converter</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1 class="logo">Mp3<span>Tune</span></h1>
+            <p class="subtitle">Convert any YouTube video to a high-quality MP3 file in seconds.</p>
+        </header>
+
+        <section class="converter-box">
+            <form id="convert-form">
+                <div class="input-group">
+                    <input 
+                        type="url" 
+                        id="youtube-url" 
+                        placeholder="Paste YouTube URL here..." 
+                        required 
+                        autocomplete="off"
+                    >
+                    <button type="submit" id="convert-btn">Convert</button>
+                </div>
+            </form>
+
+            <div id="status-area" class="status-area hidden">
+                <div id="loader" class="loader hidden">
+                    <div class="spinner"></div>
+                    <p>Processing... this might take a minute.</p>
+                </div>
+                
+                <div id="error-message" class="error hidden">
+                    <p id="error-text">An error occurred.</p>
+                </div>
+
+                <div id="success-area" class="success hidden">
+                    <p class="success-title">Conversion Complete!</p>
+                    <p id="video-title" class="video-title"></p>
+                    <a id="download-link" href="#" class="download-btn">Download MP3</a>
+                </div>
+            </div>
+        </section>
+        
+        <footer>
+            <p>Mp3Tune is for personal use only. Please respect copyright laws.</p>
+        </footer>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>
