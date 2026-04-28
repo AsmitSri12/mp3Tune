@@ -16,6 +16,17 @@ if (!fs.existsSync(TEMP_DIR)) {
     fs.mkdirSync(TEMP_DIR, { recursive: true });
 }
 
+// Auto-update yt-dlp binary on startup to bypass Render's node_modules cache
+try {
+    const { execSync } = require('child_process');
+    const ytdlPath = require('youtube-dl-exec/src/constants').YOUTUBE_DL_PATH;
+    console.log('Updating yt-dlp binary to the latest version...');
+    execSync(`"${ytdlPath}" -U`, { stdio: 'inherit' });
+    console.log('yt-dlp update check complete.');
+} catch (e) {
+    console.error('Failed to auto-update yt-dlp:', e.message);
+}
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
