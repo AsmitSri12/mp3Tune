@@ -4,6 +4,25 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
 
+// Ensure ffmpeg has execute permissions on cloud environments like Render
+try {
+    fs.chmodSync(ffmpegPath, 0o777);
+} catch (e) {
+    console.log('Could not change ffmpeg permissions:', e.message);
+}
+
+// Common yt-dlp flags to bypass bot protection on cloud servers
+const baseOptions = {
+    noCheckCertificates: true,
+    noWarnings: true,
+    preferFreeFormats: true,
+    forceIpv4: true,
+    addHeader: [
+        'referer:youtube.com',
+        'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
+    ]
+};
+
 async function convertToMp3(url, tempDir) {
     const fileId = uuidv4();
     const finalFile = path.join(tempDir, `${fileId}.mp3`);
@@ -13,7 +32,7 @@ async function convertToMp3(url, tempDir) {
         // 1. Get info to check duration
         const info = await youtubedl(url, {
             dumpJson: true,
-            noWarnings: true,
+            ...baseOptions
         });
 
         // 2. Limit duration (10 minutes = 600 seconds)
@@ -29,14 +48,14 @@ async function convertToMp3(url, tempDir) {
             audioFormat: 'mp3',
             ffmpegLocation: ffmpegPath,
             output: downloadTemplate,
-            noWarnings: true,
+            ...baseOptions
         });
 
         // The file is saved as <fileId>.mp3 because of --audio-format mp3
         
         // Double check if file exists
         if (!fs.existsSync(finalFile)) {
-            throw new Error('Failed to create MP3 file.');
+            throw new Error('Failed to create MP3 file. The file might be blocked or conversion failed.');
         }
 
         return { fileId, title: info.title };
@@ -46,7 +65,14 @@ async function convertToMp3(url, tempDir) {
         if (fs.existsSync(finalFile)) {
             fs.unlinkSync(finalFile);
         }
-        throw new Error(error.message || 'Conversion failed.');
+        
+        // Provide a clearer error message
+        let errorMessage = error.message || 'Conversion failed.';
+        if (errorMessage.includes('HTTP Error 403') || errorMessage.includes('Sign in to confirm')) {
+             errorMessage = 'YouTube blocked the request. Please try again later or try a different video.';
+        }
+        
+        throw new Error(errorMessage);
     }
 }
 
