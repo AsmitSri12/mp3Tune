@@ -1,8 +1,12 @@
 const youtubedl = require('youtube-dl-exec');
 const ffmpegPath = require('ffmpeg-static');
+const ffmpeg = require('fluent-ffmpeg');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
+
+// Tell fluent-ffmpeg where the ffmpeg binary is
+ffmpeg.setFfmpegPath(ffmpegPath);
 
 // Ensure ffmpeg has execute permissions on cloud environments like Render
 try {
@@ -25,8 +29,8 @@ const baseOptions = {
 
 async function convertToMp3(url, tempDir) {
     const fileId = uuidv4();
+    const rawAudioFile = path.join(tempDir, `${fileId}.audio`);
     const finalFile = path.join(tempDir, `${fileId}.mp3`);
-    const downloadTemplate = path.join(tempDir, `${fileId}.%(ext)s`);
 
     try {
         // 1. Get info to check duration
@@ -41,18 +45,30 @@ async function convertToMp3(url, tempDir) {
             throw new Error(`Video exceeds maximum duration of ${MAX_DURATION / 60} minutes.`);
         }
 
-        // 3. Download and extract audio as MP3
-        // We use yt-dlp's built-in extraction, pointing it to ffmpeg-static
+        // 3. Download the best audio directly to rawAudioFile without extracting via yt-dlp
+        // This avoids yt-dlp attempting to use its own python subprocess for ffmpeg, which often fails on Render
         await youtubedl(url, {
-            extractAudio: true,
-            audioFormat: 'mp3',
-            ffmpegLocation: ffmpegPath,
-            output: downloadTemplate,
+            format: 'bestaudio',
+            output: rawAudioFile,
             ...baseOptions
         });
 
-        // The file is saved as <fileId>.mp3 because of --audio-format mp3
-        
+        // 4. Convert to MP3 using fluent-ffmpeg in Node.js
+        await new Promise((resolve, reject) => {
+            ffmpeg(rawAudioFile)
+                .audioBitrate(128)
+                .save(finalFile)
+                .on('end', resolve)
+                .on('error', (err) => {
+                    reject(new Error(`FFmpeg conversion failed: ${err.message}`));
+                });
+        });
+
+        // Clean up the raw audio file
+        if (fs.existsSync(rawAudioFile)) {
+            fs.unlinkSync(rawAudioFile);
+        }
+
         // Double check if file exists
         if (!fs.existsSync(finalFile)) {
             throw new Error('Failed to create MP3 file. The file might be blocked or conversion failed.');
@@ -61,10 +77,10 @@ async function convertToMp3(url, tempDir) {
         return { fileId, title: info.title };
     } catch (error) {
         console.error('youtube-dl-exec error:', error);
+        
         // Clean up any partial files if they exist
-        if (fs.existsSync(finalFile)) {
-            fs.unlinkSync(finalFile);
-        }
+        if (fs.existsSync(rawAudioFile)) fs.unlinkSync(rawAudioFile);
+        if (fs.existsSync(finalFile)) fs.unlinkSync(finalFile);
         
         // Provide a clearer error message
         let errorMessage = error.message || 'Conversion failed.';
