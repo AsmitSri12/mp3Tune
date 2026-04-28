@@ -21,6 +21,7 @@ const baseOptions = {
     noWarnings: true,
     preferFreeFormats: true,
     forceIpv4: true,
+    extractorArgs: 'youtube:player_client=android',
     addHeader: [
         'referer:youtube.com',
         'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
@@ -79,8 +80,8 @@ async function convertToMp3(url, tempDir) {
         console.error('youtube-dl-exec error:', error);
         
         // Clean up any partial files if they exist
-        if (fs.existsSync(rawAudioFile)) fs.unlinkSync(rawAudioFile);
-        if (fs.existsSync(finalFile)) fs.unlinkSync(finalFile);
+        try { if (fs.existsSync(rawAudioFile)) fs.unlinkSync(rawAudioFile); } catch(e){}
+        try { if (fs.existsSync(finalFile)) fs.unlinkSync(finalFile); } catch(e){}
         
         // Provide a clearer error message
         let errorMessage = error.message || 'Conversion failed.';
